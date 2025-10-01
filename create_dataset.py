@@ -110,7 +110,7 @@ def read_points(cloud, field_names=None, skip_nans=False, uvs=[]):
                     yield unpack_from(data, offset)
                     offset += point_step
 
-save_folder = "msl_111624_v2"
+save_folder = "traj9-13_2"
 path = Path(save_folder).mkdir(parents=True, exist_ok=True)
 
 # Create a typestore and get the string class.
@@ -163,19 +163,19 @@ with Reader(bag_name) as reader:
             qvio_poses.append(transform_c2w)
             qvio_timestamps.append(timestamp)
 
-        if connection.topic == '/republished_pointcloud':
-            msg = typestore.deserialize_cdr(rawdata, connection.msgtype)
+        # if connection.topic == '/republished_pointcloud':
+        #     msg = typestore.deserialize_cdr(rawdata, connection.msgtype)
   
-            point_cloud = np.array(list(read_points(msg)))
-            #gen = pc2.read_points(msg, skip_nans=True)
-            #int_data = list(gen)
+        #     point_cloud = np.array(list(read_points(msg)))
+        #     #gen = pc2.read_points(msg, skip_nans=True)
+        #     #int_data = list(gen)
 
-            #point_cloud = np.array(int_data)
+        #     #point_cloud = np.array(int_data)
 
-            point_cloud = point_cloud[~np.all(point_cloud == 0, axis=1)]
+        #     point_cloud = point_cloud[~np.all(point_cloud == 0, axis=1)]
 
-            point_clouds.append(point_cloud.T)
-            point_cloud_timestamps.append(timestamp)
+        #     point_clouds.append(point_cloud.T)
+        #     point_cloud_timestamps.append(timestamp)
 
 #%%
 
@@ -189,37 +189,53 @@ for timestamp in img_timestamps:
     qvio_pose = qvio_poses[idx]
     qvios.append(qvio_pose)
 
-    idx = np.argmin(np.abs(np.array(point_cloud_timestamps) - timestamp))
-    pcd = point_clouds[idx]
+    # idx = np.argmin(np.abs(np.array(point_cloud_timestamps) - timestamp))
+    # pcd = point_clouds[idx]
 
-    transform = qvio_pose @ np.linalg.inv(opengl_to_opencv) @ np.linalg.inv(camera_to_body)
+    # transform = qvio_pose @ np.linalg.inv(opengl_to_opencv) @ np.linalg.inv(camera_to_body)
+    # transform = qvio_pose @ np.linalg.inv(camera_to_body)
 
-    tof_transform = transform @ tof_to_body
-    point_cloud = tof_transform[:3, :3] @ pcd + tof_transform[:3, 3][:, None]
+    # tof_transform = transform @ tof_to_body
+    # point_cloud = tof_transform[:3, :3] @ pcd + tof_transform[:3, 3][:, None]
 
-    pcds.append(point_cloud.T)
+    # pcds.append(point_cloud.T)
 
 qvios = np.array(qvios)
 
+# for timestamp in point_cloud_timestamps:
+#     idx = np.argmin(np.abs(np.array(qvio_timestamps) - timestamp))
+#     qvio_pose = qvio_poses[idx]
+#     qvios.append(qvio_pose)
+
+#     idx = np.argmin(np.abs(np.array(point_cloud_timestamps) - timestamp))
+#     pcd = point_clouds[idx]
+
+#     transform = qvio_pose @ np.linalg.inv(opengl_to_opencv) @ np.linalg.inv(camera_to_body)
+
+#     tof_transform = transform @ tof_to_body
+#     point_cloud = tof_transform[:3, :3] @ pcd + tof_transform[:3, 3][:, None]
+
+#     pcds.append(point_cloud.T)
+
+# qvios = np.array(qvios)
 #%%
 
 # Saves the point cloud for Nerfstudio initialization
+# pcds_all = np.concatenate(pcds, axis=0)
 
-pcds_all = np.concatenate(pcds, axis=0)
+# pcds_viz = o3d.geometry.PointCloud()
+# pcds_viz.points = o3d.utility.Vector3dVector(pcds_all)
 
-pcds_viz = o3d.geometry.PointCloud()
-pcds_viz.points = o3d.utility.Vector3dVector(pcds_all)
+# pcd_traj = o3d.geometry.PointCloud()
+# pcd_traj.points = o3d.utility.Vector3dVector(qvios[:, :3, -1])
+# pcd_traj.paint_uniform_color([1, 0, 1])
 
-pcd_traj = o3d.geometry.PointCloud()
-pcd_traj.points = o3d.utility.Vector3dVector(qvios[:, :3, -1])
-pcd_traj.paint_uniform_color([1, 0, 1])
+# o3d.visualization.draw_geometries([pcds_viz, pcd_traj])
 
-o3d.visualization.draw_geometries([pcds_viz, pcd_traj])
-
-# Downsample pcd if necessary
-pcds_viz = pcds_viz.uniform_down_sample(100)
-print('Number of points:', len(pcds_viz.points))
-o3d.io.write_point_cloud(f"{save_folder}/sparse.ply", pcds_viz)
+# # Downsample pcd if necessary
+# pcds_viz = pcds_viz.uniform_down_sample(100)
+# print('Number of points:', len(pcds_viz.points))
+# o3d.io.write_point_cloud(f"{save_folder}/sparse.ply", pcds_viz)
 #%%
 
 #NOTE: You might have to change these camera intrinsics
